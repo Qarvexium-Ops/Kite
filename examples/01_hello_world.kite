@@ -1,0 +1,3 @@
+# Hello World in Kite
+print("Hello, World!")
+print("Welcome to Kite v1.0.0!")

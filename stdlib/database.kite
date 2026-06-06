@@ -1,0 +1,379 @@
+# Database Library - Compete with SQLAlchemy, Mongoose, ActiveRecord
+
+# SQL Query Builder
+fn create_query() {
+    return {
+        type: null,
+        table: null,
+        columns: [],
+        where_clauses: [],
+        joins: [],
+        order_by: [],
+        limit_val: null,
+        offset_val: null
+    }
+}
+
+fn select(query, ...columns) {
+    query.type = "SELECT"
+    query.columns = columns
+    return query
+}
+
+fn from_table(query, table) {
+    query.table = table
+    return query
+}
+
+fn where(query, condition) {
+    push(query.where_clauses, condition)
+    return query
+}
+
+fn join(query, table, on) {
+    push(query.joins, {table: table, on: on})
+    return query
+}
+
+fn order_by(query, column, direction) {
+    push(query.order_by, {column: column, direction: direction ?? "ASC"})
+    return query
+}
+
+fn limit(query, n) {
+    query.limit_val = n
+    return query
+}
+
+fn offset(query, n) {
+    query.offset_val = n
+    return query
+}
+
+fn build_sql(query) {
+    let sql = "SELECT "
+    
+    if len(query.columns) == 0 {
+        sql = sql + "*"
+    } else {
+        sql = sql + join(query.columns, ", ")
+    }
+    
+    sql = sql + " FROM " + query.table
+    
+    for j in query.joins {
+        sql = sql + " JOIN " + j.table + " ON " + j.on
+    }
+    
+    if len(query.where_clauses) > 0 {
+        sql = sql + " WHERE " + join(query.where_clauses, " AND ")
+    }
+    
+    if len(query.order_by) > 0 {
+        let order_parts = []
+        for o in query.order_by {
+            push(order_parts, o.column + " " + o.direction)
+        }
+        sql = sql + " ORDER BY " + join(order_parts, ", ")
+    }
+    
+    if query.limit_val {
+        sql = sql + " LIMIT " + str(query.limit_val)
+    }
+    
+    if query.offset_val {
+        sql = sql + " OFFSET " + str(query.offset_val)
+    }
+    
+    return sql
+}
+
+# ORM (Object-Relational Mapping)
+fn create_model(table_name, schema) {
+    return {
+        table: table_name,
+        schema: schema,
+        instances: []
+    }
+}
+
+fn model_create(model, data) {
+    let instance = {
+        id: uuid(),
+        ...data,
+        created_at: time_now(),
+        updated_at: time_now()
+    }
+    
+    push(model.instances, instance)
+    return instance
+}
+
+fn model_find_by_id(model, id) {
+    for instance in model.instances {
+        if instance.id == id {
+            return instance
+        }
+    }
+    return null
+}
+
+fn model_find_all(model, filter) {
+    if !filter {
+        return model.instances
+    }
+    
+    let results = []
+    for instance in model.instances {
+        let matches = true
+        for key in keys(filter) {
+            if instance[key] != filter[key] {
+                matches = false
+                break
+            }
+        }
+        if matches {
+            push(results, instance)
+        }
+    }
+    return results
+}
+
+fn model_update(model, id, data) {
+    let instance = model_find_by_id(model, id)
+    if instance {
+        for key in keys(data) {
+            instance[key] = data[key]
+        }
+        instance.updated_at = time_now()
+        return instance
+    }
+    return null
+}
+
+fn model_delete(model, id) {
+    let new_instances = []
+    for instance in model.instances {
+        if instance.id != id {
+            push(new_instances, instance)
+        }
+    }
+    model.instances = new_instances
+}
+
+# Migrations
+fn create_migration(name) {
+    return {
+        name: name,
+        up: null,
+        down: null
+    }
+}
+
+fn migration_up(migration, fn_up) {
+    migration.up = fn_up
+}
+
+fn migration_down(migration, fn_down) {
+    migration.down = fn_down
+}
+
+# Schema definition
+fn define_schema() {
+    return {
+        fields: {},
+        indexes: [],
+        constraints: []
+    }
+}
+
+fn add_field(schema, name, type, options) {
+    schema.fields[name] = {
+        type: type,
+        required: options.required ?? false,
+        default: options.default ?? null,
+        unique: options.unique ?? false
+    }
+}
+
+fn add_index(schema, fields) {
+    push(schema.indexes, fields)
+}
+
+fn add_constraint(schema, constraint) {
+    push(schema.constraints, constraint)
+}
+
+# Validation
+fn validate_instance(schema, data) {
+    let errors = []
+    
+    for field_name in keys(schema.fields) {
+        let field = schema.fields[field_name]
+        let value = data[field_name]
+        
+        if field.required && !value {
+            push(errors, field_name + " is required")
+        }
+        
+        if value && field.type == "string" && type_of(value) != "string" {
+            push(errors, field_name + " must be a string")
+        }
+        
+        if value && field.type == "int" && type_of(value) != "int" {
+            push(errors, field_name + " must be an integer")
+        }
+    }
+    
+    return {valid: len(errors) == 0, errors: errors}
+}
+
+# Transactions
+fn begin_transaction() {
+    return {
+        operations: [],
+        committed: false,
+        rolled_back: false
+    }
+}
+
+fn transaction_add(transaction, operation) {
+    push(transaction.operations, operation)
+}
+
+fn commit_transaction(transaction) {
+    for op in transaction.operations {
+        op.execute()
+    }
+    transaction.committed = true
+}
+
+fn rollback_transaction(transaction) {
+    for op in transaction.operations {
+        if op.rollback {
+            op.rollback()
+        }
+    }
+    transaction.rolled_back = true
+}
+
+# Connection pooling
+fn create_pool(config) {
+    return {
+        connections: [],
+        max_size: config.max_size ?? 10,
+        available: []
+    }
+}
+
+fn pool_get_connection(pool) {
+    if len(pool.available) > 0 {
+        return pop(pool.available)
+    }
+    
+    if len(pool.connections) < pool.max_size {
+        let conn = create_connection()
+        push(pool.connections, conn)
+        return conn
+    }
+    
+    return null
+}
+
+fn pool_release_connection(pool, conn) {
+    push(pool.available, conn)
+}
+
+# NoSQL-style document store
+fn create_collection(name) {
+    return {
+        name: name,
+        documents: []
+    }
+}
+
+fn collection_insert(collection, doc) {
+    let new_doc = {
+        _id: uuid(),
+        ...doc,
+        _created: time_now()
+    }
+    push(collection.documents, new_doc)
+    return new_doc
+}
+
+fn collection_find(collection, query) {
+    let results = []
+    
+    for doc in collection.documents {
+        if matches_query(doc, query) {
+            push(results, doc)
+        }
+    }
+    
+    return results
+}
+
+fn collection_find_one(collection, query) {
+    for doc in collection.documents {
+        if matches_query(doc, query) {
+            return doc
+        }
+    }
+    return null
+}
+
+fn collection_update(collection, query, update) {
+    for doc in collection.documents {
+        if matches_query(doc, query) {
+            for key in keys(update) {
+                doc[key] = update[key]
+            }
+            doc._updated = time_now()
+        }
+    }
+}
+
+fn collection_delete(collection, query) {
+    let new_docs = []
+    for doc in collection.documents {
+        if !matches_query(doc, query) {
+            push(new_docs, doc)
+        }
+    }
+    collection.documents = new_docs
+}
+
+fn matches_query(doc, query) {
+    for key in keys(query) {
+        if doc[key] != query[key] {
+            return false
+        }
+    }
+    return true
+}
+
+# Aggregation pipeline
+fn aggregate(collection, pipeline) {
+    let result = collection.documents
+    
+    for stage in pipeline {
+        if stage.match {
+            result = [doc for doc in result if matches_query(doc, stage.match)]
+        }
+        
+        if stage.group {
+            result = group_documents(result, stage.group)
+        }
+        
+        if stage.sort {
+            result = sort_documents(result, stage.sort)
+        }
+        
+        if stage.limit {
+            result = result[0:stage.limit]
+        }
+    }
+    
+    return result
+}

@@ -1,0 +1,15 @@
+# Arrays and Objects
+let numbers = [1, 2, 3, 4, 5]
+print("Numbers:", numbers)
+print("First:", numbers[0])
+print("Length:", len(numbers))
+
+let person = {
+    name: "Alice",
+    age: 30,
+    city: "New York"
+}
+
+print("Person:", person)
+print("Name:", person.name)
+print("Age:", person.age)

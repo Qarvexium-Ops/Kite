@@ -1,0 +1,23 @@
+# Easter Egg Demo
+# Try to find the secret message!
+
+print("Easter Egg Hunt!")
+print("================")
+print()
+print("Attempting division by zero multiple times...")
+print("There's a 1% chance of seeing a special message!")
+print()
+
+let count = 0
+while count < 20 {
+    try {
+        let result = 10 / 0
+    } catch (error) {
+        print("Attempt", count + 1, ":", error)
+    }
+    count = count + 1
+}
+
+print()
+print("Did you see it? Keep trying!")
+print("Hint: 'Looks like even Kite can't resolve this problem...'")

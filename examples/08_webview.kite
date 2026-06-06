@@ -1,0 +1,51 @@
+# WebView Example
+let html = "
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kite WebView</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        h1 { font-size: 3em; }
+        button {
+            background: #ff6b6b;
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Kite v1.0.0</h1>
+    <p>WebView Example</p>
+    <button onclick='test()'>Test Function</button>
+    <div id='output'></div>
+    
+    <script>
+        async function test() {
+            const result = await window.kite.call('greet', 'WebView');
+            document.getElementById('output').textContent = result;
+        }
+    </script>
+</body>
+</html>
+"
+
+let app = webview("Kite WebView", 800, 600, html)
+
+fn greet(name) {
+    return "Hello from " + name + "!"
+}
+
+webview_hook(app, "greet", greet)
+webview_show(app)

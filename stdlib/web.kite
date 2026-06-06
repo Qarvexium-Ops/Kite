@@ -1,0 +1,266 @@
+# Web Framework - Compete with Express.js, Flask, Rails
+
+# HTTP Server
+fn create_server(port) {
+    return {
+        port: port,
+        routes: {},
+        middleware: []
+    }
+}
+
+fn route(server, method, path, handler) {
+    let key = method + " " + path
+    server.routes[key] = handler
+}
+
+fn get(server, path, handler) {
+    route(server, "GET", path, handler)
+}
+
+fn post(server, path, handler) {
+    route(server, "POST", path, handler)
+}
+
+fn put(server, path, handler) {
+    route(server, "PUT", path, handler)
+}
+
+fn delete_route(server, path, handler) {
+    route(server, "DELETE", path, handler)
+}
+
+fn use_middleware(server, middleware) {
+    push(server.middleware, middleware)
+}
+
+# Request/Response helpers
+fn json_response(data, status) {
+    return {
+        status: status ?? 200,
+        headers: {"Content-Type": "application/json"},
+        body: json_stringify(data)
+    }
+}
+
+fn html_response(html, status) {
+    return {
+        status: status ?? 200,
+        headers: {"Content-Type": "text/html"},
+        body: html
+    }
+}
+
+fn redirect(url, status) {
+    return {
+        status: status ?? 302,
+        headers: {"Location": url},
+        body: ""
+    }
+}
+
+# URL parsing
+fn parse_url(url) {
+    let parts = split(url, "?")
+    let path = parts[0]
+    let query = if len(parts) > 1 { parse_query(parts[1]) } else { {} }
+    
+    return {path: path, query: query}
+}
+
+fn parse_query(query_string) {
+    let params = {}
+    let pairs = split(query_string, "&")
+    
+    for pair in pairs {
+        let kv = split(pair, "=")
+        if len(kv) == 2 {
+            params[kv[0]] = url_decode(kv[1])
+        }
+    }
+    
+    return params
+}
+
+fn url_encode(str) {
+    # Simple URL encoding
+    let result = ""
+    for char in str {
+        if char == " " {
+            result = result + "+"
+        } else {
+            result = result + char
+        }
+    }
+    return result
+}
+
+fn url_decode(str) {
+    return replace(str, "+", " ")
+}
+
+# Template engine
+fn render_template(template, data) {
+    let result = template
+    
+    for key in keys(data) {
+        let placeholder = "{{" + key + "}}"
+        result = replace(result, placeholder, str(data[key]))
+    }
+    
+    return result
+}
+
+# Session management
+fn create_session() {
+    return {
+        id: uuid(),
+        data: {},
+        created_at: time_now()
+    }
+}
+
+fn session_set(session, key, value) {
+    session.data[key] = value
+}
+
+fn session_get(session, key) {
+    return session.data[key]
+}
+
+# Cookie parsing
+fn parse_cookies(cookie_header) {
+    let cookies = {}
+    let pairs = split(cookie_header, "; ")
+    
+    for pair in pairs {
+        let kv = split(pair, "=")
+        if len(kv) == 2 {
+            cookies[kv[0]] = kv[1]
+        }
+    }
+    
+    return cookies
+}
+
+fn set_cookie(name, value, options) {
+    let cookie = name + "=" + value
+    
+    if options.max_age {
+        cookie = cookie + "; Max-Age=" + str(options.max_age)
+    }
+    
+    if options.path {
+        cookie = cookie + "; Path=" + options.path
+    }
+    
+    if options.secure {
+        cookie = cookie + "; Secure"
+    }
+    
+    if options.http_only {
+        cookie = cookie + "; HttpOnly"
+    }
+    
+    return cookie
+}
+
+# CORS middleware
+fn cors_middleware(req, res, next) {
+    res.headers["Access-Control-Allow-Origin"] = "*"
+    res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    res.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    
+    if req.method == "OPTIONS" {
+        return {status: 204, headers: res.headers, body: ""}
+    }
+    
+    return next(req, res)
+}
+
+# Body parser middleware
+fn json_body_parser(req, res, next) {
+    if req.headers["Content-Type"] == "application/json" {
+        req.body = json_parse(req.raw_body)
+    }
+    return next(req, res)
+}
+
+# Static file serving
+fn serve_static(directory) {
+    return fn(req, res, next) {
+        let file_path = directory + req.path
+        
+        if exists(file_path) {
+            let content = read(file_path)
+            let ext = path_ext(file_path)
+            let content_type = get_content_type(ext)
+            
+            return {
+                status: 200,
+                headers: {"Content-Type": content_type},
+                body: content
+            }
+        }
+        
+        return next(req, res)
+    }
+}
+
+fn get_content_type(ext) {
+    let types = {
+        ".html": "text/html",
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+        ".txt": "text/plain"
+    }
+    
+    return types[ext] ?? "application/octet-stream"
+}
+
+# WebSocket support
+fn create_websocket(url) {
+    return {
+        url: url,
+        connected: false,
+        handlers: {}
+    }
+}
+
+fn ws_on(ws, event, handler) {
+    ws.handlers[event] = handler
+}
+
+fn ws_send(ws, data) {
+    # Send data through websocket
+    print("WS Send:", data)
+}
+
+# REST API helpers
+fn rest_api(base_url) {
+    return {
+        base: base_url,
+        headers: {}
+    }
+}
+
+fn api_get(api, endpoint) {
+    return http_get(api.base + endpoint)
+}
+
+fn api_post(api, endpoint, data) {
+    return http_post(api.base + endpoint, data)
+}
+
+fn api_put(api, endpoint, data) {
+    return http_put(api.base + endpoint, data)
+}
+
+fn api_delete(api, endpoint) {
+    return http_delete(api.base + endpoint)
+}

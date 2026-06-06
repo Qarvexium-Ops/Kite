@@ -1,0 +1,141 @@
+# Collections Standard Library
+# Advanced data structures
+
+# Stack implementation
+fn stack_create() {
+    return {items: [], size: 0}
+}
+
+fn stack_push(stack, item) {
+    stack["items"] = push(stack["items"], item)
+    stack["size"] = stack["size"] + 1
+    return stack
+}
+
+fn stack_pop(stack) {
+    if stack["size"] == 0 {
+        return null
+    }
+    let items = stack["items"]
+    let item = items[stack["size"] - 1]
+    stack["items"] = slice(items, 0, stack["size"] - 1)
+    stack["size"] = stack["size"] - 1
+    return item
+}
+
+fn stack_peek(stack) {
+    if stack["size"] == 0 {
+        return null
+    }
+    return stack["items"][stack["size"] - 1]
+}
+
+fn stack_is_empty(stack) {
+    return stack["size"] == 0
+}
+
+# Queue implementation
+fn queue_create() {
+    return {items: [], size: 0}
+}
+
+fn queue_enqueue(queue, item) {
+    queue["items"] = push(queue["items"], item)
+    queue["size"] = queue["size"] + 1
+    return queue
+}
+
+fn queue_dequeue(queue) {
+    if queue["size"] == 0 {
+        return null
+    }
+    let items = queue["items"]
+    let item = items[0]
+    queue["items"] = slice(items, 1, queue["size"])
+    queue["size"] = queue["size"] - 1
+    return item
+}
+
+fn queue_peek(queue) {
+    if queue["size"] == 0 {
+        return null
+    }
+    return queue["items"][0]
+}
+
+fn queue_is_empty(queue) {
+    return queue["size"] == 0
+}
+
+# Set operations
+fn set_create(items) {
+    let unique = []
+    for item in items {
+        let found = false
+        for existing in unique {
+            if existing == item {
+                found = true
+            }
+        }
+        if not found {
+            unique = push(unique, item)
+        }
+    }
+    return unique
+}
+
+fn set_add(set, item) {
+    for existing in set {
+        if existing == item {
+            return set
+        }
+    }
+    return push(set, item)
+}
+
+fn set_remove(set, item) {
+    let result = []
+    for existing in set {
+        if existing != item {
+            result = push(result, existing)
+        }
+    }
+    return result
+}
+
+fn set_contains(set, item) {
+    for existing in set {
+        if existing == item {
+            return true
+        }
+    }
+    return false
+}
+
+fn set_union(set1, set2) {
+    let result = set1
+    for item in set2 {
+        result = set_add(result, item)
+    }
+    return result
+}
+
+fn set_intersection(set1, set2) {
+    let result = []
+    for item in set1 {
+        if set_contains(set2, item) {
+            result = push(result, item)
+        }
+    }
+    return result
+}
+
+fn set_difference(set1, set2) {
+    let result = []
+    for item in set1 {
+        if not set_contains(set2, item) {
+            result = push(result, item)
+        }
+    }
+    return result
+}

@@ -1,0 +1,318 @@
+# Async/Concurrency Library - Compete with async/await, Promises, Go routines
+
+# Promise implementation
+fn create_promise(executor) {
+    let promise = {
+        state: "pending",
+        value: null,
+        error: null,
+        then_callbacks: [],
+        catch_callbacks: []
+    }
+    
+    fn resolve(value) {
+        if promise.state == "pending" {
+            promise.state = "fulfilled"
+            promise.value = value
+            
+            for callback in promise.then_callbacks {
+                callback(value)
+            }
+        }
+    }
+    
+    fn reject(error) {
+        if promise.state == "pending" {
+            promise.state = "rejected"
+            promise.error = error
+            
+            for callback in promise.catch_callbacks {
+                callback(error)
+            }
+        }
+    }
+    
+    executor(resolve, reject)
+    return promise
+}
+
+fn promise_then(promise, callback) {
+    if promise.state == "fulfilled" {
+        callback(promise.value)
+    } else if promise.state == "pending" {
+        push(promise.then_callbacks, callback)
+    }
+    return promise
+}
+
+fn promise_catch(promise, callback) {
+    if promise.state == "rejected" {
+        callback(promise.error)
+    } else if promise.state == "pending" {
+        push(promise.catch_callbacks, callback)
+    }
+    return promise
+}
+
+fn promise_all(promises) {
+    return create_promise(fn(resolve, reject) {
+        let results = []
+        let completed = 0
+        
+        for i in range(len(promises)) {
+            let p = promises[i]
+            promise_then(p, fn(value) {
+                results[i] = value
+                completed = completed + 1
+                
+                if completed == len(promises) {
+                    resolve(results)
+                }
+            })
+            
+            promise_catch(p, fn(error) {
+                reject(error)
+            })
+        }
+    })
+}
+
+fn promise_race(promises) {
+    return create_promise(fn(resolve, reject) {
+        for p in promises {
+            promise_then(p, resolve)
+            promise_catch(p, reject)
+        }
+    })
+}
+
+# Async/await simulation
+fn async_fn(generator) {
+    return fn(...args) {
+        return create_promise(fn(resolve, reject) {
+            let gen = generator(...args)
+            
+            fn step(value) {
+                let result = gen_next(gen, value)
+                
+                if result.done {
+                    resolve(result.value)
+                } else {
+                    promise_then(result.value, step)
+                    promise_catch(result.value, reject)
+                }
+            }
+            
+            step(null)
+        })
+    }
+}
+
+# Task queue
+fn create_task_queue() {
+    return {
+        tasks: [],
+        running: false,
+        concurrency: 1
+    }
+}
+
+fn queue_add(queue, task) {
+    push(queue.tasks, task)
+    if !queue.running {
+        queue_process(queue)
+    }
+}
+
+fn queue_process(queue) {
+    if len(queue.tasks) == 0 {
+        queue.running = false
+        return
+    }
+    
+    queue.running = true
+    let task = shift(queue.tasks)
+    
+    task(fn() {
+        queue_process(queue)
+    })
+}
+
+# Worker pool
+fn create_worker_pool(size) {
+    return {
+        workers: [],
+        size: size,
+        queue: []
+    }
+}
+
+fn pool_submit(pool, task) {
+    if len(pool.workers) < pool.size {
+        let worker = spawn(task)
+        push(pool.workers, worker)
+    } else {
+        push(pool.queue, task)
+    }
+}
+
+# Debounce
+fn debounce(fn_to_debounce, delay) {
+    let timer = null
+    
+    return fn(...args) {
+        if timer {
+            clear_timeout(timer)
+        }
+        
+        timer = set_timeout(fn() {
+            fn_to_debounce(...args)
+        }, delay)
+    }
+}
+
+# Throttle
+fn throttle(fn_to_throttle, limit) {
+    let in_throttle = false
+    
+    return fn(...args) {
+        if !in_throttle {
+            fn_to_throttle(...args)
+            in_throttle = true
+            
+            set_timeout(fn() {
+                in_throttle = false
+            }, limit)
+        }
+    }
+}
+
+# Retry with exponential backoff
+fn retry(fn_to_retry, max_attempts, initial_delay) {
+    return create_promise(fn(resolve, reject) {
+        let attempt = 0
+        
+        fn try_fn() {
+            attempt = attempt + 1
+            
+            let result = fn_to_retry()
+            promise_then(result, resolve)
+            promise_catch(result, fn(error) {
+                if attempt >= max_attempts {
+                    reject(error)
+                } else {
+                    let delay = initial_delay * (2 ** (attempt - 1))
+                    set_timeout(try_fn, delay)
+                }
+            })
+        }
+        
+        try_fn()
+    })
+}
+
+# Parallel execution
+fn parallel(tasks) {
+    let promises = []
+    
+    for task in tasks {
+        let promise = create_promise(fn(resolve, reject) {
+            let result = task()
+            resolve(result)
+        })
+        push(promises, promise)
+    }
+    
+    return promise_all(promises)
+}
+
+# Sequential execution
+fn sequential(tasks) {
+    return create_promise(fn(resolve, reject) {
+        let results = []
+        let index = 0
+        
+        fn run_next() {
+            if index >= len(tasks) {
+                resolve(results)
+                return
+            }
+            
+            let task = tasks[index]
+            index = index + 1
+            
+            let result = task()
+            push(results, result)
+            run_next()
+        }
+        
+        run_next()
+    })
+}
+
+# Timeout wrapper
+fn with_timeout(promise, timeout_ms) {
+    return promise_race([
+        promise,
+        create_promise(fn(resolve, reject) {
+            set_timeout(fn() {
+                reject("Timeout exceeded")
+            }, timeout_ms)
+        })
+    ])
+}
+
+# Mutex/Lock
+fn create_mutex() {
+    return {
+        locked: false,
+        queue: []
+    }
+}
+
+fn mutex_lock(mutex, callback) {
+    if !mutex.locked {
+        mutex.locked = true
+        callback()
+        mutex_unlock(mutex)
+    } else {
+        push(mutex.queue, callback)
+    }
+}
+
+fn mutex_unlock(mutex) {
+    if len(mutex.queue) > 0 {
+        let next = shift(mutex.queue)
+        next()
+    } else {
+        mutex.locked = false
+    }
+}
+
+# Semaphore
+fn create_semaphore(max_count) {
+    return {
+        count: 0,
+        max: max_count,
+        queue: []
+    }
+}
+
+fn semaphore_acquire(sem, callback) {
+    if sem.count < sem.max {
+        sem.count = sem.count + 1
+        callback()
+    } else {
+        push(sem.queue, callback)
+    }
+}
+
+fn semaphore_release(sem) {
+    sem.count = sem.count - 1
+    
+    if len(sem.queue) > 0 {
+        let next = shift(sem.queue)
+        sem.count = sem.count + 1
+        next()
+    }
+}

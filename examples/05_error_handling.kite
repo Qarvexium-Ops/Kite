@@ -1,0 +1,23 @@
+# Error Handling with try/catch
+print("Test 1: Division by zero")
+try {
+    print("Attempting division...")
+    let result = 10 / 0
+    print("Result:", result)
+} catch (error) {
+    print("Caught error:", error)
+}
+
+print()
+print("Test 2: Undefined variable")
+try {
+    print(undefined_var)
+} catch (error) {
+    print("Caught error:", error)
+}
+
+print()
+print("Program continues after errors!")
+print()
+print("Hint: Try running this multiple times!")
+print("There's a 1% chance of seeing a special message...")

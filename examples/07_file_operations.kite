@@ -1,0 +1,9 @@
+# File Operations
+print("Writing to file...")
+write_file("test.txt", "Hello from Kite v1.0.0!")
+print("File written successfully")
+
+print()
+print("Reading from file...")
+let content = read_file("test.txt")
+print("File content:", content)

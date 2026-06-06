@@ -1,0 +1,264 @@
+# Machine Learning Library - Compete with scikit-learn, TensorFlow
+
+# Linear Regression
+fn linear_regression(X, y) {
+    # Simple linear regression using least squares
+    let n = len(X)
+    let sum_x = 0
+    let sum_y = 0
+    let sum_xy = 0
+    let sum_xx = 0
+    
+    for i in range(n) {
+        sum_x = sum_x + X[i]
+        sum_y = sum_y + y[i]
+        sum_xy = sum_xy + X[i] * y[i]
+        sum_xx = sum_xx + X[i] * X[i]
+    }
+    
+    let slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
+    let intercept = (sum_y - slope * sum_x) / n
+    
+    return {slope: slope, intercept: intercept}
+}
+
+fn predict_linear(model, x) {
+    return model.slope * x + model.intercept
+}
+
+# K-Means Clustering
+fn kmeans(data, k, max_iter) {
+    let max_iterations = max_iter ?? 100
+    
+    # Initialize centroids randomly
+    let centroids = []
+    for i in range(k) {
+        push(centroids, data[i])
+    }
+    
+    for iter in range(max_iterations) {
+        # Assign points to clusters
+        let clusters = []
+        for i in range(k) { push(clusters, []) }
+        
+        for point in data {
+            let min_dist = 999999
+            let cluster_idx = 0
+            
+            for i in range(k) {
+                let dist = euclidean_distance(point, centroids[i])
+                if dist < min_dist {
+                    min_dist = dist
+                    cluster_idx = i
+                }
+            }
+            
+            push(clusters[cluster_idx], point)
+        }
+        
+        # Update centroids
+        for i in range(k) {
+            if len(clusters[i]) > 0 {
+                centroids[i] = cluster_mean(clusters[i])
+            }
+        }
+    }
+    
+    return {centroids: centroids}
+}
+
+fn euclidean_distance(a, b) {
+    let sum = 0
+    for i in range(len(a)) {
+        let diff = a[i] - b[i]
+        sum = sum + diff * diff
+    }
+    return sqrt(sum)
+}
+
+fn cluster_mean(points) {
+    let n = len(points)
+    let dims = len(points[0])
+    let mean = []
+    
+    for d in range(dims) {
+        let sum = 0
+        for point in points {
+            sum = sum + point[d]
+        }
+        push(mean, sum / n)
+    }
+    
+    return mean
+}
+
+# Neural Network (Simple)
+fn create_neural_network(layers) {
+    let weights = []
+    
+    for i in range(len(layers) - 1) {
+        let layer_weights = []
+        for j in range(layers[i]) {
+            let neuron_weights = []
+            for k in range(layers[i + 1]) {
+                push(neuron_weights, random_float() - 0.5)
+            }
+            push(layer_weights, neuron_weights)
+        }
+        push(weights, layer_weights)
+    }
+    
+    return {layers: layers, weights: weights}
+}
+
+fn sigmoid(x) {
+    return 1 / (1 + exp(-x))
+}
+
+fn relu(x) {
+    return if x > 0 { x } else { 0 }
+}
+
+fn forward_pass(network, input) {
+    let activation = input
+    
+    for layer_weights in network.weights {
+        let new_activation = []
+        
+        for neuron_idx in range(len(layer_weights[0])) {
+            let sum = 0
+            for input_idx in range(len(activation)) {
+                sum = sum + activation[input_idx] * layer_weights[input_idx][neuron_idx]
+            }
+            push(new_activation, sigmoid(sum))
+        }
+        
+        activation = new_activation
+    }
+    
+    return activation
+}
+
+# Decision Tree (Simple)
+fn decision_tree_split(data, feature_idx, threshold) {
+    let left = []
+    let right = []
+    
+    for row in data {
+        if row[feature_idx] < threshold {
+            push(left, row)
+        } else {
+            push(right, row)
+        }
+    }
+    
+    return {left: left, right: right}
+}
+
+fn gini_impurity(groups, classes) {
+    let total = 0
+    for group in groups {
+        total = total + len(group)
+    }
+    
+    let gini = 0
+    for group in groups {
+        let size = len(group)
+        if size == 0 { continue }
+        
+        let score = 0
+        for class_val in classes {
+            let count = count_class(group, class_val)
+            let p = count / size
+            score = score + p * p
+        }
+        
+        gini = gini + (1 - score) * (size / total)
+    }
+    
+    return gini
+}
+
+# Gradient Descent
+fn gradient_descent(f, grad_f, x0, learning_rate, iterations) {
+    let x = x0
+    let lr = learning_rate ?? 0.01
+    let iters = iterations ?? 1000
+    
+    for i in range(iters) {
+        let grad = grad_f(x)
+        x = x - lr * grad
+    }
+    
+    return x
+}
+
+# Data preprocessing
+fn normalize(data) {
+    let min_val = min(data)
+    let max_val = max(data)
+    let range = max_val - min_val
+    
+    return [(x - min_val) / range for x in data]
+}
+
+fn standardize(data) {
+    let m = mean(data)
+    let std = std_dev(data)
+    
+    return [(x - m) / std for x in data]
+}
+
+fn train_test_split(data, test_size) {
+    let n = len(data)
+    let test_count = n * test_size
+    let shuffled = shuffle(data)
+    
+    let train = []
+    let test = []
+    
+    for i in range(n) {
+        if i < test_count {
+            push(test, shuffled[i])
+        } else {
+            push(train, shuffled[i])
+        }
+    }
+    
+    return {train: train, test: test}
+}
+
+# Confusion Matrix
+fn confusion_matrix(y_true, y_pred) {
+    let tp = 0
+    let fp = 0
+    let tn = 0
+    let fn = 0
+    
+    for i in range(len(y_true)) {
+        if y_true[i] == 1 && y_pred[i] == 1 { tp = tp + 1 }
+        if y_true[i] == 0 && y_pred[i] == 1 { fp = fp + 1 }
+        if y_true[i] == 0 && y_pred[i] == 0 { tn = tn + 1 }
+        if y_true[i] == 1 && y_pred[i] == 0 { fn = fn + 1 }
+    }
+    
+    return {tp: tp, fp: fp, tn: tn, fn: fn}
+}
+
+fn accuracy(cm) {
+    return (cm.tp + cm.tn) / (cm.tp + cm.fp + cm.tn + cm.fn)
+}
+
+fn precision(cm) {
+    return cm.tp / (cm.tp + cm.fp)
+}
+
+fn recall(cm) {
+    return cm.tp / (cm.tp + cm.fn)
+}
+
+fn f1_score(cm) {
+    let p = precision(cm)
+    let r = recall(cm)
+    return 2 * (p * r) / (p + r)
+}

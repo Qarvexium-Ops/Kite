@@ -1,0 +1,10 @@
+# Variables and Types
+let name = "Kite"
+let version = 1.0
+let count = 42
+let is_awesome = true
+
+print("Language:", name)
+print("Version:", version)
+print("Count:", count)
+print("Awesome:", is_awesome)
